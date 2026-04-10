@@ -1,0 +1,15 @@
+[Unit]
+Description=Instahelper container service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+ExecStartPre=/usr/bin/docker pull {{ container_image }}
+ExecStartPre=-/usr/bin/docker rm -f %n
+ExecStart=/usr/bin/docker run --rm --name %n -p {{ container_port }} {{ container_image }}
+ExecStop=/usr/bin/docker stop %n
+
+[Install]
+WantedBy=multi-user.target
+
