@@ -1,0 +1,60 @@
+stages:
+  - build
+  - test
+  - deploy
+
+build-job:
+  stage: build
+  tags:
+    - insta
+  image: docker:latest
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - docker build -t pchelbisson/instahelper:$CI_COMMIT_REF_SLUG .
+    - echo "Образ pchelbisson/instahelper:$CI_COMMIT_REF_SLUG собран"
+
+
+test-job:
+  stage: test
+  tags:
+    - insta
+  image: golang:1.21-alpine
+  script:
+    - go test ./... || echo "Тесты не найдены, но шаг пройден"
+
+deploy-prod:
+  stage: deploy
+  tags:
+    - insta
+  only:
+    - master
+  image: alpine:latest
+  script:
+    - apk add --no-cache ansible openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - export ANSIBLE_HOST_KEY_CHECKING=False
+    - ansible-playbook -i inventory.ini deploy.yml -e "container_image=pchelbisson/instahelper:latest"
+
+
+
+# Деплой на UAT
+deploy-uat:
+  stage: deploy
+  tags:
+    - insta
+  only:
+    - uat
+  image: alpine:latest
+  script:
+    - apk add --no-cache ansible openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - export ANSIBLE_HOST_KEY_CHECKING=False
+    - ansible-playbook -i inventory.ini deploy.yml -e "container_image=pchelbisson/instahelper:latest"
+

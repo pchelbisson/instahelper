@@ -2,6 +2,12 @@
   hosts: app
   become: yes
 
+- name: Setup GitLab Runner
+  hosts: all
+  become: yes
+  vars_files:
+    - credentials.yml
+
   tasks:
     - name: Update apt cache
       apt:
@@ -46,3 +52,48 @@
         name: ubuntu
         groups: docker
         append: yes
+
+    - name: Ensure gnupg is installed
+      apt:
+        name: gnupg
+        state: present
+
+    - name: Download GitLab GPG key
+      get_url:
+        url: https://packages.gitlab.com/gpg.key
+        dest: /tmp/gitlab-runner.key
+
+    - name: Convert key to keyring (FIXED)
+      shell: |
+        gpg --dearmor < /tmp/gitlab-runner.key > /usr/share/keyrings/gitlab-runner.gpg
+      args:
+        creates: /usr/share/keyrings/gitlab-runner.gpg
+
+    - name: Add GitLab Runner repository
+      apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/gitlab-runner.gpg] https://packages.gitlab.com/runner/gitlab-runner/ubuntu/ jammy main"
+        state: present
+        update_cache: no
+    
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install GitLab Runner
+      apt:
+        name: gitlab-runner
+        state: present
+
+    - name: Register GitLab Runner
+      command: >
+        gitlab-runner register
+        --non-interactive
+        --url "https://gitlab.skillbox.ru/"
+        --registration-token "{{ gitlab_registration_token }}"
+        --executor "docker"
+        --docker-image "docker:latest"
+        --description "yandex-cloud-runner"
+        --tag-list "insta"
+        --run-untagged="true"
+      args:
+        creates: /etc/gitlab-runner/config.toml
