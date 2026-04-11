@@ -1,60 +1,30 @@
-# Infrastructure Platform — Final Project
+# Instahelper — infrastructure and CI/CD
 
-## About the Project
+This repository contains the `instahelper` service and the infrastructure code to deploy and run it via GitLab CI.
 
-This is my final project for the "DevOps Engineer: Fundamentals" course.
-I'm building an infrastructure platform similar to those used in real companies. The project demonstrates my approach to automation, environment organization, and cloud computing.
+## Structure
 
-## What's Inside
+- `infra/` — Terraform + Ansible for VM and GitLab Runner.
+- `service/` — Go service, Ansible deployment, and `.gitlab-ci.yml`.
 
-The repository has two main sections:
+## What has already been implemented
 
-- `infra/` — all infrastructure as code: Terraform, Ansible, environment setup, and auxiliary services.
-- `service/` — an example microservice that shows developers how to use the platform.
+- Terraform deploys a VM + target group + L4 LB in Yandex Cloud.
+- Ansible installs Docker and GitLab Runner on the host.
+- The following stages are configured in service/.gitlab-ci.yml: build, test, and deploy.
+- A separate deploy job (deploy-uat) is configured for uat.
 
-## How I work with the cloud (Yandex Cloud)
+More details are in `infra/README.md` and `service/README.md`.
 
-I use Yandex Cloud with a free grant of 4,000 rubles. To stay within the limits:
-
-- I only deploy the infrastructure for the duration of the work;
-- I use preemptible VMs (they're significantly cheaper);
-- I destroy everything ('terraform destroy') after each session;
-- I monitor disks, snapshots, reserved IPs, and load balancers;
-- I only deploy the full platform at the end for a final check.
-
-DNS: If possible, I'll link a domain (or find a free alternative) and manage records through Terraform.
-
-## What I use
-
-- Terraform — for creating cloud resources
-- Ansible — for server configuration
-- Ansible Galaxy — pre-built roles where appropriate
-- Terraform Registry — pre-built modules
-
-## How to run everything on your own
+## Quick start
 
 ```bash
-git clone <my repository>
-cd infra/terraform
+# Infra
+cd infra
 terraform init
 terraform apply
-```
-
-After applying terraform:
-
-```bash
-cd ../ansible
-ansible-playbook playbook.yml
-```
-To run the example service:
-
-```bash
-cd ../../service
-```
-# continue with the README inside service/
-To delete everything:
-
-```bash
-cd infra/terraform
-terraform destroy
+# Runner + Docker
+cd ansible
+ansible-playbook -i inventory.ini playbook.yml
+# Service CI/CD is described in service/.gitlab-ci.yml
 ```

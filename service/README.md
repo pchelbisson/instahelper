@@ -1,20 +1,27 @@
-# Service Deployment Template
+# Service: instahelper
 
-This Ansible playbook deploys a Docker container as a system service (systemd).
 
-## Requirements
-1. Docker must be installed on the target host.
-2. The playbook directory must contain a `templates/` folder with the `instahelper.service.j2` file.
+## What's in the directory
+- `cmd/server/` — Go service sources.
+- `deploy.yml` — Ansible playbook for deploying the service.
+- `.gitlab-ci.yml` — GitLab pipeline (build/test/deploy).
+- `inventory.ini` — target host for deployment.
 
-## How to use
+## How the pipeline works
 
-1. Make sure the `app` host is defined in your inventory file.
-2. In the `deploy.yml` file or using the `-e` switches, configure the following variables:
-* `service_name`: service name (e.g., `my-app`).
-* `container_image`: Docker image name (e.g., `pchelbisson/instahelper:latest`).
-* `container_port`: port forwarding (e.g., `8080:8080`).
+Stages:
 
-3. Run the playbook:
+1. `build` — build the Docker image `pchelbisson/instahelper:$CI_COMMIT_REF_SLUG`.
+2. `test` — run `go test ./...`.
+3. `deploy` — run `ansible-playbook -i inventory.ini deploy.yml`.
+
+### Launch conditions (current state)
+
+- `build-job` and `test-job`: run in the regular pipeline (without a branch filter).
+- `deploy-prod`: run only for the `master` branch.
+- `deploy-uat`: run only for the `uat` branch.
+
+## Manual deployment (local)
 ```bash
-ansible-playbook -i inventory.ini deploy.yml
+ansible-playbook -i inventory.ini deploy.yml -e "container_image=pchelbisson/instahelper:latest"
 ```
