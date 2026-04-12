@@ -97,3 +97,19 @@
         --run-untagged="true"
       args:
         creates: /etc/gitlab-runner/config.toml
+
+    - name: Create monitoring directory
+      file:
+        path: /opt/monitoring
+        state: directory
+        mode: '0755'
+
+    - name: Copy monitoring configs
+      copy:
+        src: files/monitoring/
+        dest: /opt/monitoring/
+
+    - name: Start monitoring stack
+      community.docker.docker_compose_v2:
+        project_src: /opt/monitoring
+        state: present
