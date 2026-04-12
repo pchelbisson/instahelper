@@ -25,3 +25,7 @@ Stages:
 ```bash
 ansible-playbook -i inventory.ini deploy.yml -e "container_image=pchelbisson/instahelper:latest"
 ```
+
+## Monitoring integration
+
+The service exports metrics in Prometheus format on `/metrics`, and the monitoring stack from `infra/ansible/files/monitoring/` is configured to scrape the app on port `8080`.
