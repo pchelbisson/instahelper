@@ -8,8 +8,12 @@ scrape_configs:
 
   - job_name: 'node_exporter'
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ['localhost:9100']
+      - targets: ['111.88.240.79:9100']
+
 
   - job_name: 'instahelper_app'
     static_configs:
-      - targets: ['172.17.0.1:8080']
+      - targets: ['127.0.0.1:8080']
+      - targets: ['111.88.240.79:8080']
+

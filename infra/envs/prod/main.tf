@@ -2,6 +2,14 @@ data "yandex_compute_image" "ubuntu" {
   family = var.image_family
 }
 
+resource "yandex_vpc_address" "addr" {
+  name = "${var.vm_name}-static-ip"
+  external_ipv4_address {
+    zone_id = var.yc_zone
+  }
+}
+
+
 resource "yandex_compute_instance" "vm" {
   name        = var.vm_name
   platform_id = "standard-v2"
@@ -26,6 +34,7 @@ resource "yandex_compute_instance" "vm" {
   network_interface {
     subnet_id = "e9b4iccnfrlf8opemjgc"
     nat       = true
+    nat_ip_address = yandex_vpc_address.addr.external_ipv4_address[0].address
   }
 
   metadata = {
