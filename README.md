@@ -1,36 +1,46 @@
 # Instahelper — service, infrastructure, CI/CD, and monitoring
 
-This repository contains the `instahelper` service, infrastructure code for Yandex Cloud deployment, and automation for both delivery and monitoring.
+The repository contains the `instahelper` service, infrastructure in Yandex Cloud and automation of delivery to **TEST** and **PROD** environments.
 
 ## Structure
 
 - `service/` — Go service, tests, and deployment playbook.
-- `infra/` — Terraform + Ansible for infrastructure, GitLab Runner setup, and monitoring stack rollout.
+- `infra/` — Terraform + Ansible for `test` and `prod` environments, plus monitoring.
 
 ## What is implemented
 
-- Terraform deploys a VM, target group, and L4 load balancer in Yandex Cloud.
-- Ansible installs Docker and GitLab Runner on the target host.
-- CI/CD pipeline is configured in `service/.gitlab-ci.yml` (build, test, deploy).
-- Separate deploy jobs exist for `master` (prod) and `uat` branches.
-- Monitoring stack is deployed automatically via Ansible:
-  - Prometheus (`:9090`)
-  - Node Exporter (`:9100`)
-  - Grafana (`:3000`)
+- The infrastructure is divided into two environments:
+- `infra/envs/test` — test infrastructure;
+- `infra/envs/prod` — production infrastructure.
+- Ansible inventory is divided into environments:
+- `infra/ansible/inventories/test/hosts.ini`
+- `infra/ansible/inventories/prod/hosts.ini`
+- CI/CD in `service/.gitlab-ci.yml`:
+- build and tests first,
+- then deploy to TEST,
+- then deploy to PROD (from `master` only),
+- the same Docker image is used for TEST and PROD.
+- Monitoring (Prometheus + Grafana + Node Exporter) is enabled via Ansible and covers both environments.
 
 More details are in `infra/README.md` and `service/README.md`.
 
 ## Quick start
 
 ```bash
-# 1) Provision infrastructure
-cd infra
+# 1) Start the TEST infrastructure
+cd infra/envs/test
 terraform init
 terraform apply
 
-# 2) Configure host, runner, and monitoring
-cd ansible
-ansible-playbook -i inventory.ini playbook.yml
+# 2) Start the PROD infrastructure
+cd ../prod
+terraform init
+terraform apply
+
+# 3) Configure hosts and monitoring
+cd ../../ansible
+ansible-playbook -i inventories/test/hosts.ini playbook.yml
+ansible-playbook -i inventories/prod/hosts.ini playbook.yml
 
 # 3) Service CI/CD details
 cd ../../service
@@ -39,10 +49,4 @@ cd ../../service
 
 ## Monitoring
 
-The monitoring stack is managed in `infra/ansible/files/monitoring/` and launched by the main Ansible playbook.
-
-After provisioning, verify endpoints:
-
-- `http://<host>:9090` — Prometheus
-- `http://<host>:3000` — Grafana
-- `http://<host>:9100/metrics` — Node Exporter metrics
+The monitoring stack is located in `infra/ansible/files/monitoring/` and deployed to `infra/ansible/playbook.yml`.

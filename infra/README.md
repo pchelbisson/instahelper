@@ -4,18 +4,17 @@ Infrastructure code for the `instahelper` environment: Terraform resources, host
 
 ## Contents
 
-- `main.tf` — VM, target group, and network load balancer in Yandex Cloud.
-- `variables.tf` / `providers.tf` / `outputs.tf` — inputs and outputs.
-- `ansible/playbook.yml` — Docker + GitLab Runner + monitoring deployment.
-- `ansible/inventory.ini` — target host inventory.
-- `ansible/credentials.yml` — vault file with Ansible secrets.
-- `ansible/files/monitoring/docker-compose.yml` — Prometheus/Node Exporter/Grafana stack.
-- `ansible/files/monitoring/prometheus.yml` — scrape configuration.
-- `ansible/docs/ladr/monitoring-stack.md` — architecture decision for monitoring stack.
+- `envs/test/` — Terraform for the TEST environment.
+- `envs/prod/` — Terraform for the PROD environment.
+- `ansible/playbook.yml` — Docker, Runner, and monitoring configuration.
+- `ansible/inventories/test/hosts.ini` — inventory for TEST.
+- `ansible/inventories/prod/hosts.ini` — inventory for PROD.
+- `ansible/files/monitoring/docker-compose.yml` — Prometheus + Grafana + Node Exporter.
+- `ansible/files/monitoring/prometheus.yml` — scrape target configuration.
 
 ## What is automated
 
-1. Provision a preemptible VM and load balancer via Terraform.
+1. Separate creation of TEST and PROD infrastructure via Terraform.
 2. Install Docker and Docker Compose on the host.
 3. Install and register GitLab Runner.
 4. Deploy monitoring stack in Docker Compose under `/opt/monitoring`.
@@ -24,11 +23,19 @@ Infrastructure code for the `instahelper` environment: Terraform resources, host
 ## Run
 
 ```bash
-cd infra
+# TEST
+cd infra/envs/test
 terraform init
 terraform apply
-cd ansible
-ansible-playbook -i inventory.ini playbook.yml
+# PROD
+cd ../prod
+terraform init
+terraform apply
+
+# Host configuration
+cd ../../ansible
+ansible-playbook -i inventories/test/hosts.ini playbook.yml
+ansible-playbook -i inventories/prod/hosts.ini playbook.yml
 ```
 
 ## Monitoring endpoints
