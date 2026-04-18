@@ -1,0 +1,26 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /opt/logging/positions/positions.yaml
+
+clients:
+  - url: "https://{{ loki_url_short | default(loki_url) | replace('https://', '') | replace('http://', '') }}/loki/api/v1/push"
+    basic_auth:
+      username: "{{ grafana_loki_user }}"
+      password: "{{ grafana_loki_api_key }}"
+
+scrape_configs:
+  - job_name: docker_logs
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - replacement: "{{ env_name }}"
+        target_label: 'env'
+      - replacement: "instahelper"
+        target_label: 'service'

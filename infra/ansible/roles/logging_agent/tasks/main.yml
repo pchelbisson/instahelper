@@ -1,0 +1,58 @@
+---
+- name: Populate service facts
+  ansible.builtin.service_facts:
+
+- name: Ensure Docker is running
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.services['docker.service'] is defined
+      - ansible_facts.services['docker.service'].state == 'running'
+    fail_msg: "Docker is not running or not installed! Check infrastructure role."
+
+- name: Ensure Docker is running
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.services['docker.service'].state == 'running'
+    fail_msg: "Docker is not running! Stop and check infrastructure role."
+
+- name: Create logging directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /opt/logging/promtail
+    - /opt/logging/positions
+
+- name: Template Promtail configuration
+  ansible.builtin.template:
+    src: promtail.yaml.j2
+    dest: /opt/logging/promtail/promtail.yaml
+    mode: '0644'
+
+- name: Log in to Yandex Container Registry
+  ansible.builtin.shell: |
+    echo "{{ yc_token }}" | docker login --username oauth --password-stdin cr.yandex
+  changed_when: false
+  no_log: true
+
+- name: Template Docker Compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/logging/promtail/docker-compose.yml
+    mode: '0644'
+
+- name: Start Promtail via Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: /opt/logging/promtail
+    state: present
+    pull: "always"
+
+- name: Wait for Promtail to be ready
+  ansible.builtin.uri:
+    url: "http://localhost:9080/ready"
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 5
+  delay: 5

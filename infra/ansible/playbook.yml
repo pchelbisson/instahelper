@@ -1,19 +1,11 @@
-- name: Configure VM and install Docker
-  hosts: app
-  become: yes
-
-- name: Setup GitLab Runner
+---
+- name: Infrastructure Setup (Docker & GitLab Runner)
   hosts: all
   become: yes
   vars_files:
     - credentials.yml
-
   tasks:
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-
-    - name: Install required system packages
+    - name: Update apt cache and install base packages
       apt:
         name:
           - apt-transport-https
@@ -21,7 +13,9 @@
           - curl
           - software-properties-common
           - python3-pip
+          - gnupg
         state: present
+        update_cache: yes
 
     - name: Add Docker GPG key
       apt_key:
@@ -33,7 +27,7 @@
         repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
 
-    - name: Install Docker
+    - name: Install Docker & Compose
       apt:
         name:
           - docker-ce
@@ -41,7 +35,7 @@
           - containerd.io
         state: present
 
-    - name: Install Docker Compose
+    - name: Install Docker Compose binary
       get_url:
         url: https://github.com/docker/compose/releases/download/v2.24.2/docker-compose-linux-x86_64
         dest: /usr/local/bin/docker-compose
@@ -53,51 +47,52 @@
         groups: docker
         append: yes
 
-    - name: Ensure gnupg is installed
-      apt:
-        name: gnupg
-        state: present
+    - name: Setup GitLab Runner Repository
+      block:
+        - name: Download GitLab GPG key
+          get_url:
+            url: https://packages.gitlab.com/gpg.key
+            dest: /tmp/gitlab-runner.key
+        
+        - name: Convert key to keyring
+          shell: |
+            gpg --dearmor < /tmp/gitlab-runner.key > /usr/share/keyrings/gitlab-runner.gpg
+          args:
+            creates: /usr/share/keyrings/gitlab-runner.gpg
 
-    - name: Download GitLab GPG key
-      get_url:
-        url: https://packages.gitlab.com/gpg.key
-        dest: /tmp/gitlab-runner.key
+        - name: Add GitLab Runner repository
+          apt_repository:
+            repo: "deb [signed-by=/usr/share/keyrings/gitlab-runner.gpg] https://packages.gitlab.com/runner/gitlab-runner/ubuntu/ jammy main"
+            state: present
+            update_cache: yes
 
-    - name: Convert key to keyring (FIXED)
-      shell: |
-        gpg --dearmor < /tmp/gitlab-runner.key > /usr/share/keyrings/gitlab-runner.gpg
-      args:
-        creates: /usr/share/keyrings/gitlab-runner.gpg
+    - name: Install and Register GitLab Runner
+      block:
+        - name: Install GitLab Runner
+          apt:
+            name: gitlab-runner
+            state: present
 
-    - name: Add GitLab Runner repository
-      apt_repository:
-        repo: "deb [signed-by=/usr/share/keyrings/gitlab-runner.gpg] https://packages.gitlab.com/runner/gitlab-runner/ubuntu/ jammy main"
-        state: present
-        update_cache: no
-    
-    - name: Update apt cache
-      apt:
-        update_cache: yes
+        - name: Register GitLab Runner
+          command: >
+            gitlab-runner register
+            --non-interactive
+            --url "https://gitlab.skillbox.ru/"
+            --registration-token "{{ gitlab_registration_token }}"
+            --executor "docker"
+            --docker-image "docker:latest"
+            --description "yandex-cloud-runner"
+            --tag-list "insta"
+            --run-untagged="true"
+          args:
+            creates: /etc/gitlab-runner/config.toml
 
-    - name: Install GitLab Runner
-      apt:
-        name: gitlab-runner
-        state: present
-
-    - name: Register GitLab Runner
-      command: >
-        gitlab-runner register
-        --non-interactive
-        --url "https://gitlab.skillbox.ru/"
-        --registration-token "{{ gitlab_registration_token }}"
-        --executor "docker"
-        --docker-image "docker:latest"
-        --description "yandex-cloud-runner"
-        --tag-list "insta"
-        --run-untagged="true"
-      args:
-        creates: /etc/gitlab-runner/config.toml
-
+- name: Deploy Monitoring Stack
+  hosts: all
+  become: yes
+  vars_files:
+    - credentials.yml
+  tasks:
     - name: Create monitoring directory
       file:
         path: /opt/monitoring
@@ -113,3 +108,11 @@
       community.docker.docker_compose_v2:
         project_src: /opt/monitoring
         state: present
+
+- name: Install and Configure Logging
+  hosts: all
+  become: true
+  vars_files:
+    - credentials.yml
+  roles:
+    - logging_agent

@@ -1,0 +1,13 @@
+services:
+  promtail:
+    image: "cr.yandex/{{ ycr_id }}/infra/promtail:2.9.4"
+    container_name: promtail
+    restart: always
+    ports:
+      - "9080:9080"
+    volumes:
+      - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
+      - "/opt/logging/promtail/promtail.yaml:/etc/promtail/config.yml:ro"
+      - "/opt/logging/positions:/opt/logging/positions"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    command: -config.file=/etc/promtail/config.yml
