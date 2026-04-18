@@ -1,23 +1,31 @@
 # Infra
 
-Infrastructure code for the `instahelper` environment: Terraform resources, host configuration, GitLab Runner setup, and monitoring rollout.
+This section contains all platform-level automation: resource provisioning, server configuration, CI runner setup, and observability deployment.
 
 ## Contents
 
 - `envs/test/` — Terraform for the TEST environment.
 - `envs/prod/` — Terraform for the PROD environment.
-- `ansible/playbook.yml` — Docker, Runner, and monitoring configuration.
-- `ansible/inventories/test/hosts.ini` — inventory for TEST.
-- `ansible/inventories/prod/hosts.ini` — inventory for PROD.
-- `ansible/files/monitoring/docker-compose.yml` — Prometheus + Grafana + Node Exporter.
-- `ansible/files/monitoring/prometheus.yml` — scrape target configuration.
+- `ansible/playbook.yml` — host bootstrap and platform service automation.
+- `ansible/inventories/test/hosts.ini` — TEST inventory.
+- `ansible/inventories/prod/hosts.ini` — PROD inventory.
+- `ansible/files/monitoring/docker-compose.yml` — monitoring stack (Prometheus, Grafana, Node Exporter).
+- `ansible/files/monitoring/prometheus.yml` — scrape targets and config.
 
 ## What is automated
 
-1. Separate creation of TEST and PROD infrastructure via Terraform.
-2. Install Docker and Docker Compose on the host.
-3. Install and register GitLab Runner.
-4. Deploy monitoring stack in Docker Compose under `/opt/monitoring`.
+1. **Separate TEST/PROD provisioning** via Terraform.
+2. **Host preparation**: Docker/Compose and base dependencies.
+3. **GitLab Runner installation and registration** (Docker executor).
+4. **Monitoring rollout** under `/opt/monitoring` via Docker Compose.
+5. **Logging integration** (Promtail + Grafana Cloud Loki) through an Ansible role.
+
+## Architecture Principles
+
+- Isolated environments with dedicated inventory files.
+- Reproducible operations through IaC and Ansible automation.
+- Observability included in the default platform baseline.
+- Lightweight stack choices suitable for resource-constrained hosts.
 
 
 ## Run

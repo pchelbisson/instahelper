@@ -1,38 +1,55 @@
-# Service: instahelper
+# Service: Instahelper (Educational Go Stub)
 
+## Service Role in the Diploma Project
 
-## What's in the directory
-- `cmd/server/` — Go service sources.
-- `deploy.yml` — Ansible playbook for deploying the service.
-- `.gitlab-ci.yml` — GitLab pipeline (build/test/deploy).
-- `inventory.ini` — target host for deployment.
+`instahelper` is intentionally a simple Go HTTP service used as a demonstrational workload for DevOps workflows:
+- container build and packaging;
+- automated test execution;
+- deployment to TEST/PROD;
+- metrics export for observability.
 
-## How the pipeline works
+> Important: this is **not** a production business application; it is a training stub used to validate platform processes.
 
-Stages:
+## Directory Contents
 
-1. `build` — build the Docker image `pchelbisson/instahelper:$CI_COMMIT_REF_SLUG`.
+- `cmd/server/app.go` — HTTP app implementation (`/`, `/health`, `/metrics`).
+- `cmd/server/app_test.go` — basic handler unit tests.
+- `Dockerfile` — multi-stage container build.
+- `deploy.yml` — Ansible playbook for service deployment.
+- `templates/instahelper.service.j2` — systemd unit template for container run.
+- `.gitlab-ci.yml` — CI/CD pipeline (build/test/deploy).
+
+## Application Behavior
+
+- `/health` — liveness endpoint (returns `ok`).
+- `/metrics` — Prometheus metrics endpoint.
+- `/` — plain text response with request debug details.
+
+Application port: `8080`.
+
+## CI/CD (GitLab)
+
+Pipeline stages:
+1. `build` — build Docker image.
 2. `test` — run `go test ./...`.
-3. `deploy_test` — deployment to the TEST environment via `../infra/ansible/inventories/test/hosts.ini`.
-4. `deploy_prod` — deployment to the PROD environment via `../infra/ansible/inventories/prod/hosts.ini`.
+3. `deploy_test` — deploy to TEST via Ansible inventory.
+4. `deploy_prod` — deploy to PROD after TEST stage.
 
-### Launch conditions (current state)
-
-- `build-job` and `test-job`: run in the regular pipeline (without a branch filter).
-- `deploy-test` is run for the `master` and `uat` branches.
-- `deploy-prod` is run only for the `master` branch.
-- The production deployment occurs after the test deployment, since the `deploy_prod` stage is located after `deploy_test`.
-- The same image is used for TEST and PROD: `pchelbisson/instahelper:latest`.
+Current branch rules:
+- TEST deploy: `master` and `uat`.
+- PROD deploy: `master` only.
 
 ## Manual deployment (local)
 ```bash
 # TEST
-ansible-playbook -i ../infra/ansible/inventories/test/hosts.ini deploy.yml -e "container_image=pchelbisson/instahelper:latest"
+ansible-playbook -i ../infra/ansible/inventories/test/hosts.ini deploy.yml \
+  -e "container_image=pchelbisson/instahelper:latest"
 
 # PROD
-ansible-playbook -i ../infra/ansible/inventories/prod/hosts.ini deploy.yml -e "container_image=pchelbisson/instahelper:latest"
+ansible-playbook -i ../infra/ansible/inventories/prod/hosts.ini deploy.yml \
+  -e "container_image=pchelbisson/instahelper:latest"
 ```
 
-## Monitoring integration
+## Observability integration
 
-The service exports metrics in Prometheus format on `/metrics`, and the monitoring stack from `infra/ansible/files/monitoring/` is configured to scrape the app on port `8080`.
+The service exposes Prometheus-format metrics. These are scraped by the monitoring stack from `infra/ansible/files/monitoring/`, and container logs are collected through Promtail/Loki.
